@@ -82,27 +82,31 @@ class Session:
     def __init__(self, username, password):
         self.username = username
         self.password = password
-        self.session = requests.Session()
+        self.session = requests.Session()  # create persistent session
         self.session.mount('https://www.reddit.com', HTTPAdapter(max_retries=5))
         self.session.headers["User-Agent"] = "PlacePlacer"
-        self.is_login_valid(self.username, self.password)
-        self.session.headers['x-modhash'] = self.login.json()["json"]["data"]["modhash"]
+        self.ensure_valid_login()
 
-    def is_login_valid(self, usr, pwd):
-        self.login = self.session.post("https://www.reddit.com/api/login/{}".format(self.username),
-                             data={"user": self.username, "passwd": self.password, "api_type": "json"})
-        if self.login.status_code == 200:
-            print("RESP 200!!")
-        else:
-            print("failed login")
+    def ensure_valid_login(self):
+        while 1:
+            try:
+                self.login = self.session.post("https://www.reddit.com/api/login/{}".format(self.username),
+                                               data={"user": self.username, "passwd": self.password,
+                                                     "api_type": "json"})
+                self.session.headers['x-modhash'] = self.login.json()["json"]["data"]["modhash"]
+            except KeyError:
+                print("Bad login info, please verify the username/password combination "
+                      "for \'{}\' and try again!".format(self.username))
+                self.username = input("Re-enter username: ")
+                self.password = input("Re-enter password: ")
+            else:
+                break
 
 
 def main():
     # read from command line arguments
-    # img = Image.open(sys.argv[1]) #open up desired image
-    # origin = (int(sys.argv[2]), int(sys.argv[3])) #position of top left image (x and y on canvas)
-    # username = sys.argv[4]
-    # password = sys.argv[5]
+    img = Image.open(sys.argv[1]) # open up desired image
+    origin = (int(sys.argv[2]), int(sys.argv[3])) # position of top left image (x and y on canvas)
 
     # can reprocess this so that it creates a thread for each valid username and password combination ...
     # use console in and process one by one ...
@@ -124,35 +128,25 @@ def main():
         passwrd = input("Enter your password: ")
 
         # for each username and password, create a new thread for each and test each one
-        #create new thread here???
+        # create new thread here???
+        #     #create a new thread
+        #     #establish a valid session
+        #     #login/...
         while 1:
-            interationOf = Session(usr, passwrd)
+            eachThreadHasA = Session(usr, passwrd)
+
+            for x in range(img.width):
+                for y in range(img.height):
+                    pixel = img.getpixel((x, y))
+
+                    if pixel[3] > 0:
+                        pal = obj.find_palette((pixel[0], pixel[1], pixel[2]))
+
+                        ax = x + origin[0]
+                        ay = y + origin[1]
+
+                        obj.place_pixel(ax, ay, pal)
             break
-
-    #     #create a new thread
-    #     #establish a valid session
-    #     #login/...
-
-    # establish_valid_session()
-    # s = requests.Session()
-    # s.mount('https://www.reddit.com', HTTPAdapter(max_retries=5))
-    # s.headers["User-Agent"] = "PlacePlacer"
-    # #try/catch this when checking for valid username/pw, will if response code != 200, then ask user to reinput
-    # r = s.post("https://www.reddit.com/api/login/{}".format(username),
-    #            data={"user": username, "passwd": password, "api_type": "json"})
-    # s.headers['x-modhash'] = r.json()["json"]["data"]["modhash"]
-
-    # for y in range(img.height):
-    #     for x in range(img.width):
-    #         pixel = img.getpixel((x, y))
-    #
-    #         if pixel[3] > 0:
-    #             pal = obj.find_palette((pixel[0], pixel[1], pixel[2]))
-    #
-    #             ax = x + origin[0]
-    #             ay = y + origin[1]
-    #
-    #             obj.place_pixel(ax, ay, pal)
 
 if __name__ == "__main__":
     main()
