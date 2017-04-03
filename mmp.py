@@ -110,8 +110,9 @@ class Session:
 
 def main():
     # read from command line arguments
-    img = Image.open(sys.argv[1]) # open up desired image
+    #img = Image.open(sys.argv[1]) # open up desired image
     #origin = (int(sys.argv[2]), int(sys.argv[3])) # position of top left image (x and y on canvas)
+    img = Image.open("test.png")
     origin = (808, 641)
 
     # can reprocess this so that it creates a thread for each valid username and password combination ...
