@@ -49,7 +49,7 @@ class Canvas:
         return code
 
     def place_pixel(self, ax, ay, new_color):
-        consoleMsg = "Probing absolute pixel {},{}".format(ax, ay)
+        consoleMsg = "Probing absolute pixel ({},{})".format(ax, ay)
 
         while True:
             self.loginObj = self.sessionObj.get("http://reddit.com/api/place/pixel.json?x={}&y={}".format(ax, ay),
@@ -65,9 +65,9 @@ class Canvas:
         if old_color == new_color:
             print("{}: skipping, color #{} set by {}".format(consoleMsg, new_color, data[
                 "user_name"] if "user_name" in data else "<nobody>"))
-            time.sleep(.25)
+            time.sleep(.5)
         else:
-            print("{}: Placing color #{}".format(consoleMsg, new_color, ax, ay))
+            print("{}: Placing color #{} at ({}, {})".format(consoleMsg, new_color, ax, ay))
             self.loginObj = self.sessionObj.post("https://www.reddit.com/api/place/draw.json",
                                                  data={"x": str(ax), "y": str(ay), "color": str(new_color)})
 
@@ -75,7 +75,7 @@ class Canvas:
             if "error" not in self.loginObj.json():
                 consoleMsg = "Placed color, waiting {} seconds. {}% complete."
             else:
-                consoleMsg = "Cooldown already active - waiting {} seconds. {}% complete."
+                consoleMsg = "Cool down already active - waiting {} seconds. {}% complete."
 
             timeToWait = int(secs) + 2
             while timeToWait > 0:
@@ -186,7 +186,7 @@ def main():
 
                         thrCanvas.place_pixel(ax, ay, pal)
                         checked += 1
-                        percent = round((checked/total) * 100, 2)
+                        thrCanvas.percent = round((checked/total) * 100, 2)
             consoleMessage = "All pixels placed, sleeping {}s..."
             timeToWait = 60
             while timeToWait > 0:
