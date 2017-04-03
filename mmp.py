@@ -1,10 +1,11 @@
 import math
 import sys
 import time
+import threading
+import random
 import requests
 from PIL import Image
 from requests.adapters import HTTPAdapter
-
 
 class Canvas:
     RGB_CODE_DICTIONARY = {
@@ -28,10 +29,12 @@ class Canvas:
 
     sessionObj = None
     loginObj = None
+    percent = None
 
-    def __init__(self, sessionObj, loginObj):
+    def __init__(self, sessionObj, loginObj, percent):
         self.sessionObj = sessionObj
         self.loginObj = loginObj
+        self.percent = percent
 
     def distance(self, c1, c2):
         (r1, g1, b1) = c1
@@ -46,7 +49,7 @@ class Canvas:
         return code
 
     def place_pixel(self, ax, ay, new_color):
-        print("Probing absolute pixel {},{}".format(ax, ay))
+        consoleMsg = "Probing absolute pixel {},{}".format(ax, ay)
 
         while True:
             self.loginObj = self.sessionObj.get("http://reddit.com/api/place/pixel.json?x={}&y={}".format(ax, ay),
@@ -60,22 +63,44 @@ class Canvas:
 
         old_color = data["color"] if "color" in data else 0
         if old_color == new_color:
-            print("Color #{} at {},{} already exists (placed by {}), skipping".format(new_color, ax, ay, data[
+            print("{}: skipping, color #{} set by {}".format(consoleMsg, new_color, data[
                 "user_name"] if "user_name" in data else "<nobody>"))
+            time.sleep(.25)
         else:
-            print("Placing color #{} at {},{}".format(new_color, ax, ay))
+            print("{}: Placing color #{}".format(consoleMsg, new_color, ax, ay))
             self.loginObj = self.sessionObj.post("https://www.reddit.com/api/place/draw.json",
                                                  data={"x": str(ax), "y": str(ay), "color": str(new_color)})
 
             secs = float(self.loginObj.json()["wait_seconds"])
             if "error" not in self.loginObj.json():
-                print("Placed color - waiting {} seconds".format(secs))
+                consoleMsg = "Placed color, waiting {} seconds. {}% complete."
             else:
-                print("Cool down already active - waiting {} seconds".format(int(secs)))
-            time.sleep(secs + 2)
+                consoleMsg = "Cooldown already active - waiting {} seconds. {}% complete."
+
+            timeToWait = int(secs) + 2
+            while timeToWait > 0:
+                prog = consoleMsg.format(timeToWait, self.percent)
+                time.sleep(1)
+                timeToWait -= 1
+                if timeToWait > 0:
+                    print(prog, end="              \r")
+                else:
+                    print(prog)
 
             if "error" in self.loginObj.json():
                 self.place_pixel(ax, ay, new_color)
+
+    def shuffle2d(self, arr2d, rand=random):
+        """Shuffes entries of 2-d array arr2d, preserving shape."""
+        reshape = []
+        data = []
+        iend = 0
+        for row in arr2d:
+            data.extend(row)
+            istart, iend = iend, iend + len(row)
+            reshape.append((istart, iend))
+        rand.shuffle(data)
+        return [data[istart:iend] for (istart, iend) in reshape]
 
 
 class Session:
@@ -112,8 +137,9 @@ def main():
     # read from command line arguments
     #img = Image.open(sys.argv[1]) # open up desired image
     #origin = (int(sys.argv[2]), int(sys.argv[3])) # position of top left image (x and y on canvas)
-    img = Image.open("test.png")
-    origin = (808, 641)
+    img = Image.open("test.png")  # todo: add check for if file exists
+    origin = (808, 641) # todo: get rid of hard code
+    percentage = 0
 
     # can reprocess this so that it creates a thread for each valid username and password combination ...
     # use console in and process one by one ...
@@ -141,20 +167,36 @@ def main():
         #     #login/...
         while 1:
             thrSession = Session(usr, passwrd)
-            thrCanvas = Canvas(thrSession.session, thrSession.login)
+            thrCanvas = Canvas(thrSession.session, thrSession.login, percentage)
 
+            print("starting image placement for img height: {}, width: {}".format(img.height, img.width))
+            TwoDimArray = thrCanvas.shuffle2d([[[i,j] for i in range(img.width)] for j in range(img.height)])
+            total = img.width * img.height
+            checked = 0
             for x in range(img.width):
                 for y in range(img.height):
-                    pixel = img.getpixel((x, y))
+                    xx = TwoDimArray[x][y]
+                    pixel = img.getpixel((xx[0], xx[1]))
 
                     if pixel[3] > 0:
                         pal = thrCanvas.find_palette((pixel[0], pixel[1], pixel[2]))
 
-                        ax = x + origin[0]
-                        ay = y + origin[1]
+                        ax = xx[0] + origin[0]
+                        ay = xx[1] + origin[1]
 
                         thrCanvas.place_pixel(ax, ay, pal)
-            break
+                        checked += 1
+                        percent = round((checked/total) * 100, 2)
+            consoleMessage = "All pixels placed, sleeping {}s..."
+            timeToWait = 60
+            while timeToWait > 0:
+                msg = consoleMessage.format(timeToWait)
+                time.sleep(1)
+                timeToWait -= 1
+                if timeToWait > 0:
+                    print(msg, end="              \r")
+                else:
+                    print(msg)
 
 if __name__ == "__main__":
     main()
