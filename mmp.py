@@ -26,8 +26,12 @@ class Canvas:
         (130, 0, 128): 15
     }
 
-    def __init__(self):
-        pass
+    sessionObj = None
+    loginObj = None
+
+    def __init__(self, sessionObj, loginObj):
+        self.sessionObj = sessionObj
+        self.loginObj = loginObj
 
     def distance(self, c1, c2):
         (r1, g1, b1) = c1
@@ -45,12 +49,13 @@ class Canvas:
         print("Probing absolute pixel {},{}".format(ax, ay))
 
         while True:
-            r = s.get("http://reddit.com/api/place/pixel.json?x={}&y={}".format(ax, ay), timeout=5)
-            if r.status_code == 200:
-                data = r.json()
+            self.loginObj = self.sessionObj.get("http://reddit.com/api/place/pixel.json?x={}&y={}".format(ax, ay),
+                                                timeout=5)
+            if self.loginObj.status_code == 200:
+                data = self.loginObj.json()
                 break
             else:
-                print("ERROR: ", r, r.text)
+                print("ERROR: ", self.loginObj, self.loginObj.text)
             time.sleep(5)
 
         old_color = data["color"] if "color" in data else 0
@@ -59,17 +64,17 @@ class Canvas:
                 "user_name"] if "user_name" in data else "<nobody>"))
         else:
             print("Placing color #{} at {},{}".format(new_color, ax, ay))
-            r = s.post("https://www.reddit.com/api/place/draw.json",
-                       data={"x": str(ax), "y": str(ay), "color": str(new_color)})
+            self.loginObj = self.sessionObj.post("https://www.reddit.com/api/place/draw.json",
+                                                 data={"x": str(ax), "y": str(ay), "color": str(new_color)})
 
-            secs = float(r.json()["wait_seconds"])
-            if "error" not in r.json():
+            secs = float(self.loginObj.json()["wait_seconds"])
+            if "error" not in self.loginObj.json():
                 print("Placed color - waiting {} seconds".format(secs))
             else:
-                print("Cooldown already active - waiting {} seconds".format(int(secs)))
+                print("Cool down already active - waiting {} seconds".format(int(secs)))
             time.sleep(secs + 2)
 
-            if "error" in r.json():
+            if "error" in self.loginObj.json():
                 self.place_pixel(ax, ay, new_color)
 
 
@@ -106,7 +111,8 @@ class Session:
 def main():
     # read from command line arguments
     img = Image.open(sys.argv[1]) # open up desired image
-    origin = (int(sys.argv[2]), int(sys.argv[3])) # position of top left image (x and y on canvas)
+    #origin = (int(sys.argv[2]), int(sys.argv[3])) # position of top left image (x and y on canvas)
+    origin = (808, 641)
 
     # can reprocess this so that it creates a thread for each valid username and password combination ...
     # use console in and process one by one ...
@@ -133,19 +139,20 @@ def main():
         #     #establish a valid session
         #     #login/...
         while 1:
-            eachThreadHasA = Session(usr, passwrd)
+            thrSession = Session(usr, passwrd)
+            thrCanvas = Canvas(thrSession.session, thrSession.login)
 
             for x in range(img.width):
                 for y in range(img.height):
                     pixel = img.getpixel((x, y))
 
                     if pixel[3] > 0:
-                        pal = obj.find_palette((pixel[0], pixel[1], pixel[2]))
+                        pal = thrCanvas.find_palette((pixel[0], pixel[1], pixel[2]))
 
                         ax = x + origin[0]
                         ay = y + origin[1]
 
-                        obj.place_pixel(ax, ay, pal)
+                        thrCanvas.place_pixel(ax, ay, pal)
             break
 
 if __name__ == "__main__":
