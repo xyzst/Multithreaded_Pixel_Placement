@@ -13,7 +13,7 @@ import argparse
 from PIL import Image
 from requests.adapters import HTTPAdapter
 from threading import Barrier
-from inspect import Signature
+
 
 class Canvas:
     RGB_CODE_DICTIONARY = {
@@ -142,7 +142,8 @@ class Session:
 
 
 class ShareableCharacteristics:
-    def __init__ (self, user="", password="", threadID=0):
+
+    def __init__(self, user="", password="", threadID=0):
         self.user = user
         self.password = password
         self.threadID = threadID
@@ -158,18 +159,7 @@ def prompt_user_pw(threadID, mutex, barrier):
 
 
 def distribute_pixel_placement_prompted(barrier, mutex, shared, percentage, img, startPosition, prompted):
-    # mutex.acquire() # allows user to input each username/pw without being interrupted by other threads
-    # usr = input("[{}] Username: ".format(threadID + 1))
-    # pwd = input("[{}] Password: ".format(threadID + 1))
-    # mutex.release()
-    # barrier.wait() # once user has entered the information, threads are released
-
-    # if prompted:
-    #     usr, pwd = prompt_user_pw(threadID, barrier, mutex)
-    # else:
-    #     usr, pwd =
     while 1:
-        thrSession = None
         if prompted:
             usr, pwd = prompt_user_pw(shared.threadID, barrier, mutex)
             thrSession = Session(usr, pwd, mutex, barrier)
@@ -210,11 +200,9 @@ def distribute_pixel_placement_prompted(barrier, mutex, shared, percentage, img,
 
 
 def command_line_args_user_info_path(usr_pw, barrier, mutex, percent, target, start):
-
     username = []
     password = []
     counter = 0
-
 
     for usr in usr_pw[0::2]:
         username.append(usr)
@@ -229,7 +217,6 @@ def command_line_args_user_info_path(usr_pw, barrier, mutex, percent, target, st
         new_thread.start()
 
 def prompt_user_information_path(barrier, mutex, percentage, targetImage, start):
-
     while 1:
         threadCount = input("Please enter the number of accounts you would like to use: ")
         try:
