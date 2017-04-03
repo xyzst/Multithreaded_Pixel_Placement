@@ -72,8 +72,30 @@ class Canvas:
             if "error" in r.json():
                 self.place_pixel(ax, ay, new_color)
 
-def is_valid_session(username, password):
-    return False
+
+class Session:
+    session = None
+    login = None
+    username = None
+    password = None
+
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
+        self.session = requests.Session()
+        self.session.mount('https://www.reddit.com', HTTPAdapter(max_retries=5))
+        self.session.headers["User-Agent"] = "PlacePlacer"
+        self.is_login_valid(self.username, self.password)
+        self.session.headers['x-modhash'] = self.login.json()["json"]["data"]["modhash"]
+
+    def is_login_valid(self, usr, pwd):
+        self.login = self.session.post("https://www.reddit.com/api/login/{}".format(self.username),
+                             data={"user": self.username, "passwd": self.password, "api_type": "json"})
+        if self.login.status_code == 200:
+            print("RESP 200!!")
+        else:
+            print("failed login")
+
 
 def main():
     # read from command line arguments
@@ -84,7 +106,6 @@ def main():
 
     # can reprocess this so that it creates a thread for each valid username and password combination ...
     # use console in and process one by one ...
-    reddit_place = Canvas()
 
     while 1:
         numberOfAccounts = input("Please enter the number of accounts you would like to use: ")
@@ -104,7 +125,9 @@ def main():
 
         # for each username and password, create a new thread for each and test each one
         #create new thread here???
-        while is_valid_session(usr, passwrd):
+        while 1:
+            interationOf = Session(usr, passwrd)
+            break
 
     #     #create a new thread
     #     #establish a valid session
